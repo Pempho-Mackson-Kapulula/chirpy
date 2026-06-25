@@ -7,19 +7,20 @@ import (
 
 func main() {
 	// Create the request router
-	ServeMux := http.NewServeMux()
+	mux := http.NewServeMux()
 
 	// Define the server configuration
+	port := "8080"
 	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: ServeMux,
+		Addr:    ":" + port,
+		Handler: mux,
 	}
 
 	// Create a handler that serves static files from the current dir
 	fileServerHandler := http.FileServer(http.Dir("."))
 
 	// Register the file servever handler at the root path
-	ServeMux.Handle("/", fileServerHandler)
+	mux.Handle("/", fileServerHandler)
 
 	// Start the server and listen for incoming requests
 	err := srv.ListenAndServe()
