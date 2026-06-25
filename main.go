@@ -6,26 +6,29 @@ import (
 )
 
 func main() {
-	// Create the request router
+	//creates the request router
 	mux := http.NewServeMux()
 
-	// Define the server configuration
+	//defines the server configuration
 	port := "8080"
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
 	}
 
-	// Create a handler that serves static files from the current dir
+	//creates a handler that serves static files from the path
 	fileServerHandler := http.FileServer(http.Dir("."))
 
-	// Register the file servever handler at the root path
-	mux.Handle("/", fileServerHandler)
+	//registers the file server handler at the /app/ path
+	mux.Handle("/app/", http.StripPrefix("/app", fileServerHandler))
 
-	// Start the server and listen for incoming requests
+	//registers the handler function for the /healthz route.
+	mux.HandleFunc("/healthz", readinessHandler)
+
+	//starts the server and listen for incoming requests
 	err := srv.ListenAndServe()
 
-	// Check if the server failed to start (e.g., port is already in use)
+	// checks if the server failed to start (e.g., port is already in use)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
