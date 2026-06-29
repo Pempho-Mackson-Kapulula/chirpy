@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func respondWithError(w http.ResponseWriter, code int, msg string) {
@@ -29,29 +30,50 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Write(data)
 }
 
+var badWords = map[string]struct{}{
+	"kerfuffle": {},
+	"sharbert":  {},
+	"fornax":    {},
+}
+
+func cleanProfanity(text string) string {
+	words := strings.Fields(text)
+	for i, word := range words {
+		lowerWord := strings.ToLower(word)
+		if _, exists := badWords[lowerWord]; exists {
+			words[i] = "****"
+		}
+	}
+
+	return strings.Join(words, " ")
+}
+
 func handlerValidate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
 	}
+
+	//decode request body
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
 	}
 
-	type valid struct {
-		Valid bool `json:"valid"`
-	}
-	respValid := valid{
-		Valid: true,
+	if len(params.Body) > 140 {
+		respondWithError(w, 400, "Chirp is too long")
+		return
 	}
 
-	if len(params.Body) <= 140 {
-		respondWithJSON(w, 200, respValid)
-	} else {
-		respondWithError(w, 400, "Chirp is too long")
+	cleanedBody := cleanProfanity(params.Body)
+
+	type validResponse struct {
+		CleanedBody string `json:"cleaned_body"`
 	}
+
+	respondWithJSON(w, 200, validResponse{
+		CleanedBody: cleanedBody,
+	})
 }
