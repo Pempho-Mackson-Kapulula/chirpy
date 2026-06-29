@@ -1,35 +1,27 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 )
 
 func main() {
-	//creates the request router
+	//router
 	mux := http.NewServeMux()
 
-	//defines the server configuration
-	port := "8080"
+	//server
+	addr := ":8080"
 	srv := &http.Server{
-		Addr:    ":" + port,
+		Addr:    addr,
 		Handler: mux,
 	}
 
-	//creates a handler that serves static files from the path
-	fileServerHandler := http.FileServer(http.Dir("."))
+	// static files server
+	fs := http.FileServer(http.Dir("."))
+	mux.Handle("/app/", http.StripPrefix("/app", fs))
 
-	//registers the file server handler at the /app/ path
-	mux.Handle("/app/", http.StripPrefix("/app", fileServerHandler))
+	// health check
+	mux.HandleFunc("/healthz", healthCheckHandler)
 
-	//registers the handler function for the /healthz route.
-	mux.HandleFunc("/healthz", readinessHandler)
-
-	//starts the server and listen for incoming requests
-	err := srv.ListenAndServe()
-
-	// checks if the server failed to start (e.g., port is already in use)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
+	log.Fatal(srv.ListenAndServe())
 }
