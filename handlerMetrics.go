@@ -16,12 +16,19 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
-	// Format and write the counter directly to http.ResponseWriter
-	fmt.Fprintf(w, "Hits: %d", cfg.fileserverHits.Load())
+	// 1. Generate the formatted HTML string variable
+	htmlResponse := fmt.Sprintf(`<html>
+  	<body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+  	</body>
+	</html>`, cfg.fileserverHits.Load())
 
+	// 2. Convert the string to bytes and write it to the response
+	w.Write([]byte(htmlResponse))
 }
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {

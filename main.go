@@ -30,11 +30,11 @@ func main() {
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(fs)))
 
 	// health check
-	mux.HandleFunc("GET /healthz", handlerHealthCheck)
+	mux.HandleFunc("GET /api/healthz", handlerHealthCheck)
 
 	// metrics
-	mux.HandleFunc("GET /metrics", apiCfg.handlerMetrics)
-	mux.HandleFunc("POST /reset", apiCfg.handlerReset)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 
 	log.Fatal(srv.ListenAndServe())
 }
