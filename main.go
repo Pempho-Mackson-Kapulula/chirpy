@@ -16,12 +16,14 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
+	platform       string
 }
 
 func main() {
 	//load .env file and get dbUrl
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	platform := os.Getenv("PLATFORM")
 
 	// prepare db connection pool
 	db, err := sql.Open("postgres", dbURL)
@@ -34,7 +36,8 @@ func main() {
 
 	//create an instance of apiConfig
 	apiCfg := apiConfig{
-		db: dbQueries,
+		db:       dbQueries,
+		platform: platform,
 	}
 
 	//router
@@ -56,7 +59,12 @@ func main() {
 
 	// metrics
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+
+	// delete users endpoint
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
+
+	// create user endpoint
+	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 
 	//chirp validation
 	mux.HandleFunc("POST /api/validate_chirp", handlerValidate)

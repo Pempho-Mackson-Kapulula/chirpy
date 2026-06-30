@@ -30,11 +30,3 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	// 2. Convert the string to bytes and write it to the response
 	w.Write([]byte(htmlResponse))
 }
-
-func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-
-	cfg.fileserverHits.Store(0)
-
-}
