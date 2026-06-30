@@ -60,14 +60,13 @@ func main() {
 	// metrics
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 
+	// create user endpoint
+	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 	// delete users endpoint
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 
-	// create user endpoint
-	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
-
-	//chirp validation
-	mux.HandleFunc("POST /api/validate_chirp", handlerValidate)
+	// create a chirp endpoint
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirps)
 
 	log.Fatal(srv.ListenAndServe())
 }
