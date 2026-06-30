@@ -20,53 +20,47 @@ type apiConfig struct {
 }
 
 func main() {
-	//load .env file and get dbUrl
-	godotenv.Load()
-	dbURL := os.Getenv("DB_URL")
-	platform := os.Getenv("PLATFORM")
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found: %v", err)
+	}
 
-	// prepare db connection pool
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL environment variable is required")
+	}
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close() // Ensure pool closes cleanly on exit
 
-	//create a database wrapper
-	dbQueries := database.New(db)
-
-	//create an instance of apiConfig
 	apiCfg := apiConfig{
-		db:       dbQueries,
-		platform: platform,
+		db:       database.New(db),
+		platform: os.Getenv("PLATFORM"),
 	}
 
-	//router
 	mux := http.NewServeMux()
 
-	//server config
-	addr := ":8080"
-	srv := &http.Server{
-		Addr:    addr,
-		Handler: mux,
-	}
-
-	// static files server
+	// Static asset delivery
 	fs := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(fs)))
 
-	// health check
+	// API Endpoints
 	mux.HandleFunc("GET /api/healthz", handlerHealthCheck)
-
-	// metrics
-	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
-
-	// create user endpoint
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
-	// delete users endpoint
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
+
+	// Administration
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 
-	// create a chirp endpoint
-	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirps)
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
 
+	log.Printf("Server starting on %s...", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
 }
