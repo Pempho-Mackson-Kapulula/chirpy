@@ -18,5 +18,7 @@ func (cfg *Config) HandleMetrics(w http.ResponseWriter, r *http.Request) {
 	</html>`, cfg.fileserverHits.Load())
 
 	// 2. Convert the string to bytes and write it to the response
-	w.Write([]byte(htmlResponse))
+	if _, err := w.Write([]byte(htmlResponse)); err != nil {
+		return
+	}
 }

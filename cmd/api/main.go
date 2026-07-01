@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"sync/atomic"
 
 	"github.com/Pempho-Mackson-Kapulula/chirpy/internal/api"
 	"github.com/Pempho-Mackson-Kapulula/chirpy/internal/config"
@@ -13,13 +12,6 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
-
-// api config type
-type apiConfig struct {
-	fileserverHits atomic.Int32
-	db             *database.Queries
-	platform       string
-}
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -55,6 +47,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandleGetChirps)
 	mux.HandleFunc("POST /api/chirps", apiCfg.HandleCreateChirp)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandleGetChirp)
+	mux.HandleFunc("POST /api/login", apiCfg.HandleGetUser)
 
 	// Administration
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandleMetrics)

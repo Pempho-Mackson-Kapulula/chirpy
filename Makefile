@@ -2,10 +2,11 @@ run:
 	go run ./cmd/api
 
 build:
-	go build -o chirpy ./cmd/api
+	mkdir -p bin
+	go build -o bin/chirpy ./cmd/api
 
 run-bin: build
-	./chirpy
+	./bin/chirpy
 
 sqlc:
 	sqlc generate
