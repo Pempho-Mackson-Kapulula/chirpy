@@ -1,1 +1,4 @@
 .env
+chirpy
+out
+.DS_Store
