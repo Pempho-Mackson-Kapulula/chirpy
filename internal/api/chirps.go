@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Pempho-Mackson-Kapulula/chirpy/internal/auth"
 	"github.com/Pempho-Mackson-Kapulula/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -31,21 +32,32 @@ func cleanProfanity(text string) string {
 
 func (cfg *Config) HandleCreateChirp(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
-	//decode request body
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "couldn't get token")
+		return
+	}
+
+	// validate token and get authenticated user ID
+	userID, err := auth.ValidateJWT(token, cfg.Secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "invalid token")
+		return
+	}
+	// decode request body
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		respondWithError(w, http.StatusBadRequest, "couldn't decode request")
 		return
 	}
 
 	if len(params.Body) > 140 {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
+		respondWithError(w, http.StatusBadRequest, "chirp is too long")
 		return
 	}
 
@@ -53,11 +65,11 @@ func (cfg *Config) HandleCreateChirp(w http.ResponseWriter, r *http.Request) {
 
 	chirp, err := cfg.DB.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   cleanedBody,
-		UserID: params.UserID,
+		UserID: userID,
 	})
 
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		respondWithError(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 

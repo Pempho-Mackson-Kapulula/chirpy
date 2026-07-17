@@ -33,6 +33,7 @@ func main() {
 	apiCfg := api.Config{
 		DB:       database.New(dbConn),
 		Platform: cfg.Platform,
+		Secret:   cfg.Secret,
 	}
 
 	mux := http.NewServeMux()
@@ -47,7 +48,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandleGetChirps)
 	mux.HandleFunc("POST /api/chirps", apiCfg.HandleCreateChirp)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandleGetChirp)
-	mux.HandleFunc("POST /api/login", apiCfg.HandleGetUser)
+	mux.HandleFunc("POST /api/login", apiCfg.HandleLogin)
 
 	// Administration
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandleMetrics)

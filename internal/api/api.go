@@ -10,4 +10,5 @@ type Config struct {
 	fileserverHits atomic.Int32
 	DB             *database.Queries
 	Platform       string
+	Secret         string
 }

@@ -2,21 +2,23 @@ package config
 
 import "os"
 
-type Config struct {
+type EnvConfig struct {
 	DBURL    string
 	Platform string
 	Port     string
+	Secret   string
 }
 
-func Load() Config {
+func Load() EnvConfig {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	return Config{
+	return EnvConfig{
 		DBURL:    os.Getenv("DB_URL"),
 		Platform: os.Getenv("PLATFORM"),
 		Port:     port,
+		Secret:   os.Getenv("SECRET"),
 	}
 }

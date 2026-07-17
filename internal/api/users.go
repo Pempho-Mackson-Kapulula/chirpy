@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -44,6 +45,7 @@ func (cfg *Config) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
+		log.Printf("CreateUser error: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
@@ -74,41 +76,76 @@ func (cfg *Config) HandleResetUsers(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (cfg *Config) HandleGetUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *Config) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	type Parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds *int   `json:"expires_in_seconds"`
 	}
 
-	//decode request email
+	// decode login request
 	decoder := json.NewDecoder(r.Body)
 	params := Parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't decode request")
+		respondWithError(w, http.StatusBadRequest, "couldn't decode request")
 		return
 	}
 
 	user, err := cfg.DB.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password")
+		respondWithError(w, http.StatusUnauthorized, "incorrect email or password")
 		return
 	}
 
 	match, err := auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password")
+		respondWithError(w, http.StatusUnauthorized, "incorrect email or password")
 		return
 	}
 
-	if match {
-		respondWithJSON(w, http.StatusOK, User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
-		})
-	} else {
-		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password")
+	if !match {
+		respondWithError(w, http.StatusUnauthorized, "incorrect email or password")
+		return
 	}
+
+	// calculate expiration of token
+	// default duration
+	duration := time.Hour
+
+	if params.ExpiresInSeconds != nil {
+		seconds := *params.ExpiresInSeconds
+
+		if seconds > 0 {
+			duration = time.Duration(seconds) * time.Second
+			if duration > time.Hour {
+				duration = time.Hour
+			}
+		}
+	}
+
+	// make token
+	token, err := auth.MakeJWT(user.ID, cfg.Secret, duration)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't create token")
+		return
+	}
+
+	// respond with JSON here
+	type LoginResponse struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Email     string    `json:"email"`
+		Token     string    `json:"token"`
+	}
+
+	respondWithJSON(w, http.StatusOK, LoginResponse{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+		Token:     token,
+	})
+
 }

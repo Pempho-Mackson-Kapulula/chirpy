@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -55,4 +58,50 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 	}
 
 	return tokenString, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	token := headers.Get("Authorization")
+
+	if !strings.HasPrefix(token, "Bearer ") {
+		return "", errors.New("invalid authorization header")
+	}
+
+	token = strings.TrimPrefix(token, "Bearer ")
+	token = strings.TrimSpace(token)
+
+	if token == "" {
+		return "", errors.New("empty bearer token")
+	}
+
+	return token, nil
+}
+
+func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
+	claims := &jwt.RegisteredClaims{}
+
+	// Parse the JWT and cryptographically validate the signature
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+		// Enforce that the token was signed using the expected HMAC method
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(tokenSecret), nil
+	})
+
+	// Rejects invalid signatures, structurally broken tokens, and expired timestamps
+	if err != nil || !token.Valid {
+		return uuid.Nil, errors.New("invalid token")
+	}
+
+	// Extract the subject claim established in MakeJWT
+	subject := claims.Subject
+
+	// Parse the subject string back into a structural uuid.UUID object
+	userID, err := uuid.Parse(subject)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid user id format in token: %w", err)
+	}
+
+	return userID, nil
 }
