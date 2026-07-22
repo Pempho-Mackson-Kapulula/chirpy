@@ -78,9 +78,8 @@ func (cfg *Config) HandleResetUsers(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *Config) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	type Parameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	// decode login request
@@ -113,17 +112,6 @@ func (cfg *Config) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// default duration
 	duration := time.Hour
 
-	if params.ExpiresInSeconds != nil {
-		seconds := *params.ExpiresInSeconds
-
-		if seconds > 0 {
-			duration = time.Duration(seconds) * time.Second
-			if duration > time.Hour {
-				duration = time.Hour
-			}
-		}
-	}
-
 	// make token
 	token, err := auth.MakeJWT(user.ID, cfg.Secret, duration)
 	if err != nil {
@@ -131,21 +119,39 @@ func (cfg *Config) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//get refresh token string
+	refreshTokenString := auth.MakeRefreshToken()
+
+	expiresAt := time.Now().Add(time.Hour * 24 * 60)
+
+	//create refresh toke
+	refreshTokenRecord, err := cfg.DB.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshTokenString,
+		UserID:    user.ID,
+		ExpiresAt: expiresAt,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't create refresh token")
+		return
+	}
+
 	// respond with JSON here
 	type LoginResponse struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-		Token     string    `json:"token"`
+		ID           uuid.UUID `json:"id"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Email        string    `json:"email"`
+		Token        string    `json:"token"`
+		RefreshToken string    `json:"refresh_token"`
 	}
 
 	respondWithJSON(w, http.StatusOK, LoginResponse{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        token,
+		RefreshToken: refreshTokenString,
 	})
 
 }
