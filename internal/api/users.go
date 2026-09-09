@@ -151,7 +151,59 @@ func (cfg *Config) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt:    user.UpdatedAt,
 		Email:        user.Email,
 		Token:        token,
-		RefreshToken: refreshTokenString,
+		RefreshToken: refreshTokenRecord.Token,
+	})
+
+}
+
+func (cfg *Config) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "couldn't get token")
+		return
+	}
+
+	// validate token and get authenticated user ID
+	userID, err := auth.ValidateJWT(token, cfg.Secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "invalid token")
+		return
+	}
+	// decode request body
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "couldn't decode request")
+		return
+	}
+
+	hash, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	updatedUser, err := cfg.DB.UpdateUserCredentials(r.Context(), database.UpdateUserCredentialsParams{
+		ID:             userID,
+		HashedPassword: hash,
+		Email:          params.Email,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, User{
+		ID:        updatedUser.ID,
+		CreatedAt: updatedUser.CreatedAt,
+		UpdatedAt: updatedUser.UpdatedAt,
+		Email:     updatedUser.Email,
 	})
 
 }

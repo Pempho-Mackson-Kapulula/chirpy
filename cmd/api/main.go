@@ -45,10 +45,13 @@ func main() {
 	// API Endpoints
 	mux.HandleFunc("GET /api/healthz", api.HandleCheckHealth)
 	mux.HandleFunc("POST /api/users", apiCfg.HandleCreateUser)
+	mux.HandleFunc("PUT /api/users", apiCfg.HandleUpdateUser)
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandleGetChirps)
 	mux.HandleFunc("POST /api/chirps", apiCfg.HandleCreateChirp)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandleGetChirp)
 	mux.HandleFunc("POST /api/login", apiCfg.HandleLogin)
+	mux.HandleFunc("POST /api/refresh", apiCfg.HandleRefreshToken)
+	mux.HandleFunc("POST /api/revoke", apiCfg.HandleRevokeRefreshToken)
 
 	// Administration
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandleMetrics)

@@ -13,7 +13,16 @@ import (
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (token, created_at,updated_at,user_id,expires_at,revoked_at)
+INSERT INTO refresh_tokens (
+    token,
+    created_at,
+    updated_at,
+    user_id,
+    expires_at,
+    revoked_at
+)
+
+
 VALUES(
     $1,
     NOW(),
@@ -43,4 +52,32 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 		&i.RevokedAt,
 	)
 	return i, err
+}
+
+const getUserFromRefreshToken = `-- name: GetUserFromRefreshToken :one
+SELECT u.id FROM users u
+INNER JOIN refresh_tokens rt ON u.id = rt.user_id
+WHERE rt.token = $1
+  AND rt.revoked_at IS NULL
+  AND rt.expires_at > NOW()
+`
+
+func (q *Queries) GetUserFromRefreshToken(ctx context.Context, token string) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromRefreshToken, token)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const revokeRefreshToken = `-- name: RevokeRefreshToken :exec
+UPDATE refresh_tokens
+SET revoked_at = NOW(), updated_at = NOW()
+WHERE token = $1
+  AND revoked_at IS NULL
+  AND expires_at > NOW()
+`
+
+func (q *Queries) RevokeRefreshToken(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, revokeRefreshToken, token)
+	return err
 }
